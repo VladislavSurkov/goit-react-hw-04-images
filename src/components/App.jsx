@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import { useEffect, useState } from 'react';
 import { Notify } from 'notiflix/build/notiflix-notify-aio';
 
 import { fetchImages } from '../ImageApi/ImageApi';
@@ -7,65 +7,54 @@ import { ImageGallery } from './ImageGallery/ImageGallery';
 import { Button } from './Button/Button';
 import { Loader } from './Loader/Loader';
 
-export class App extends Component {
-  state = {
-    query: '',
-    images: [],
-    page: 1,
-    totalHits: 0,
-    isLoading: false,
-  };
+export const App = () => {
+  const [query, setQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [images, setImages] = useState([]);
+  const [totalHits, setTotalHits] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
 
-  async componentDidUpdate(_, prevState) {
-    const { query, page } = this.state;
-
-    if (prevState.query !== query || prevState.page !== page) {
-      try {
-        this.setState({ isLoading: true });
-
-        const { totalHits, hits } = await fetchImages(query, page);
-
-        if (totalHits === 0) {
-         Notify.failure('Nothing was found for your request');
-          this.setState({ isLoading: false });
-          return;
-        }
-
-        this.setState(prevState => ({
-          images: page === 1 ? hits : [...prevState.images, ...hits],
-
-          totalHits:
-            page === 1
-              ? totalHits - hits.length
-              : totalHits - [...prevState.images, ...hits].length,
-        }));
-
-        this.setState({ isLoading: false });
-      } catch (error) {
-       Notify.failure(`Oops! Something went wrong! ${error}`);
-      }
+  useEffect(() => {
+    if (!query) {
+      return;
     }
-  }
 
-  handleLoadMore = () => {
-    this.setState(prevState => ({ page: prevState.page + 1 }));
-  };
+    setIsLoading(true);
+    const fetchData = async () => {
+      const { totalHits, hits } = await fetchImages(query, page);
+      if (totalHits === 0) {
+        Notify.failure('Nothing was found for your request');
+        setIsLoading(false);
+        return;
+      }
 
-  handleQuerySubmit = query => {
-    this.setState({ query, page: 1 });
-  };
+      setImages(prevImages => (page === 1 ? hits : [...prevImages, ...hits]));
 
-  render() {
-    const { images, totalHits, isLoading } = this.state;
-    const { handleQuerySubmit, handleLoadMore } = this;
-
-    return (
-      <>
-        <Searchbar onSubmit={handleQuerySubmit} />
-        {images && <ImageGallery images={images} />}
-        {!!totalHits && <Button onLoadMore={handleLoadMore} />}
-        {isLoading && <Loader />}
-      </>
+      setTotalHits(prevTotalHits =>
+        page === 1 ? totalHits - hits.length : prevTotalHits - hits.length
+      );
+      setIsLoading(false);
+    };
+    fetchData().catch(error =>
+      Notify.failure(`Oops! Something went wrong! ${error}`)
     );
-  }
-}
+  }, [query, page]);
+
+  const handleLoadMore = () => {
+    setPage(prevPage => prevPage + 1);
+  };
+
+  const handleQuerySubmit = query => {
+    setQuery(query);
+    setPage(1);
+  };
+
+  return (
+    <>
+      <Searchbar onSubmit={handleQuerySubmit} />
+      {images && <ImageGallery images={images} />}
+      {!!totalHits && <Button onLoadMore={handleLoadMore} />}
+      {isLoading && <Loader />}
+    </>
+  );
+};
