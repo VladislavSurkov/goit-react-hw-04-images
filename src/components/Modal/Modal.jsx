@@ -35,4 +35,5 @@ Modal.propTypes = {
   tags: PropTypes.string.isRequired,
   modalImg: PropTypes.string.isRequired,
   closeModal: PropTypes.func.isRequired,
+  closeByEsc: PropTypes.func.isRequired,
 };
